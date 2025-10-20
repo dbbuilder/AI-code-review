@@ -106,6 +106,18 @@ async def health_check():
     }
 
 
+@app.get("/debug/env")
+async def debug_env():
+    """Debug endpoint to check environment variables (remove in production)"""
+    return {
+        "has_openai_key": bool(os.environ.get("OPENAI_API_KEY")),
+        "has_anthropic_key": bool(os.environ.get("ANTHROPIC_API_KEY")),
+        "has_openrouter_key": bool(os.environ.get("OPENROUTER_API_KEY")),
+        "openai_key_prefix": os.environ.get("OPENAI_API_KEY", "")[:10] + "..." if os.environ.get("OPENAI_API_KEY") else "NOT_SET",
+        "env_keys": [k for k in os.environ.keys() if "API" in k or "KEY" in k]
+    }
+
+
 @app.post("/api/analysis/start", response_model=AnalysisStatus)
 async def start_analysis(
     request: AnalysisRequest,
