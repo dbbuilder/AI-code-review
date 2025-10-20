@@ -335,7 +335,23 @@ print(f"By extension: {summary['by_extension']}")
 print(f"By directory: {summary['by_directory']}")
 ```
 
-### Test 2: Review a Single File
+### Test 2: Quick AI Integration Test (Low Token Usage)
+
+```bash
+# Set your OpenAI API key
+export OPENAI_API_KEY="sk-..."
+
+# Run quick test
+python test_ai_integration.py
+```
+
+This test script:
+- Creates a small Python file with intentional issues (SQL injection, inefficient loop)
+- Sends it to OpenAI GPT-4o-mini for review
+- Uses minimal tokens (~500 tokens)
+- Displays findings with severity, category, and suggestions
+
+### Test 3: Review a Single File
 
 ```python
 from pathlib import Path
@@ -344,8 +360,8 @@ from src.crengine.ai_reviewer import review_file
 findings = review_file(
     file_path=Path("src/api/main.py"),
     repo_root=Path("."),
-    ai_provider="anthropic",
-    api_key="sk-ant-..."
+    ai_provider="openai",  # Changed to openai
+    api_key=os.environ.get("OPENAI_API_KEY")
 )
 
 for finding in findings:
@@ -353,16 +369,24 @@ for finding in findings:
     print(f"  {finding.file}:{finding.line_start}")
 ```
 
-### Test 3: Full Analysis via API
+### Test 4: Full Analysis via API
 
 ```bash
-# Start analysis
+# Start analysis (defaults to OpenAI GPT-4o-mini)
+curl -X POST https://authentic-nurturing-production-9807.up.railway.app/api/analysis/start \
+  -H "Content-Type: application/json" \
+  -d '{
+    "repo_url": "https://github.com/yourusername/test-repo",
+    "branch": "main"
+  }'
+
+# Or specify provider explicitly
 curl -X POST https://authentic-nurturing-production-9807.up.railway.app/api/analysis/start \
   -H "Content-Type: application/json" \
   -d '{
     "repo_url": "https://github.com/yourusername/test-repo",
     "branch": "main",
-    "ai_provider": "anthropic"
+    "ai_provider": "openai"
   }'
 
 # Check status
@@ -376,28 +400,42 @@ curl https://authentic-nurturing-production-9807.up.railway.app/api/analysis/res
 
 ## Next Steps
 
-### Immediate (Add API Keys)
+### Immediate (Add API Keys) ✅ UPDATED
 
-1. **Get Anthropic API Key**: https://console.anthropic.com/
+1. **Get OpenAI API Key**: https://platform.openai.com/api-keys
 2. **Add to Railway**:
    - Go to Railway dashboard
    - Service → Variables
+   - Add: `OPENAI_API_KEY = sk-proj-...`
+   - Service will auto-redeploy
+
+3. **Optional: Add OpenRouter** (for multi-model access):
+   - Get API key: https://openrouter.ai/keys
+   - Add: `OPENROUTER_API_KEY = sk-or-...`
+
+4. **Optional: Add Anthropic** (alternative provider):
+   - Get API key: https://console.anthropic.com/
    - Add: `ANTHROPIC_API_KEY = sk-ant-...`
-   - Redeploy
 
-### Short Term (Frontend Integration)
+### Short Term (Test & Verify)
 
-3. **Wire up Dashboard/Analyze UI** to call the API
-4. **Display Results Page** with findings grouped by severity
-5. **Add GitHub Posting** to create issues from findings
+5. **Run local test**: `python test_ai_integration.py`
+6. **Test via API**: Submit a small repo through the web UI
+7. **Verify results**: Check that findings are meaningful and actionable
 
-### Medium Term (Enhancements)
+### Medium Term (Frontend Integration)
 
-6. **Add caching** - don't re-analyze unchanged files
-7. **Add database** - persist results beyond in-memory
-8. **Add job queue** - handle concurrent analyses
-9. **Add webhooks** - notify when analysis completes
-10. **Add custom rules** - let users add their own checks
+8. **Wire up Dashboard/Analyze UI** to call the API
+9. **Display Results Page** with findings grouped by severity
+10. **Add GitHub Posting** to create issues from findings
+
+### Long Term (Enhancements)
+
+11. **Add caching** - don't re-analyze unchanged files
+12. **Add database** - persist results beyond in-memory
+13. **Add job queue** - handle concurrent analyses
+14. **Add webhooks** - notify when analysis completes
+15. **Add custom rules** - let users add their own checks
 
 ---
 
@@ -409,7 +447,10 @@ curl https://authentic-nurturing-production-9807.up.railway.app/api/analysis/res
 ✅ **Cost-conscious** - Limits to prevent runaway spending
 ✅ **Production-ready** - Error handling, retries, logging
 ✅ **Well-documented** - Clear code, configs, and guides
+✅ **Multi-provider support** - OpenAI (default), Anthropic, OpenRouter
 
 **Status**: Ready to deploy and test with real repositories!
 
-**Next**: Add ANTHROPIC_API_KEY to Railway and redeploy.
+**Default Provider**: OpenAI GPT-4o-mini (cost-effective)
+
+**Next**: Add OPENAI_API_KEY to Railway and test with small repository.
