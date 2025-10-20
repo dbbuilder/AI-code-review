@@ -15,8 +15,13 @@ import uuid
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../..'))
 
-# Import crengine - comment out for now until we wire it up
-# from src.crengine.main import run_full_pass
+# Import crengine modules
+from pathlib import Path
+import sys
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+
+from src.crengine.smart_filter import filter_repository_files, get_file_summary
+from src.crengine.ai_reviewer import review_repository, save_findings_json, generate_markdown_report
 
 app = FastAPI(
     title="AutoRev Code Review API",
@@ -267,54 +272,135 @@ async def run_analysis(job_id: str):
             raise Exception(f"Failed to clone repository: {result.stderr}")
 
         # Run analysis
-        job["message"] = "Running code analysis..."
+        job["message"] = "Filtering relevant code files..."
         job["progress"] = 30
 
-        # TODO: Integrate crengine when ready
-        # For now, create mock results
         import json
 
-        # Create mock findings
-        mock_findings = [
-            {
-                "file": "example.py",
-                "line": 42,
-                "severity": "high",
-                "message": "Potential security vulnerability",
-                "rule": "bandit-B101",
-                "recommendation": "Use parameterized queries instead of string concatenation"
-            },
-            {
-                "file": "utils.py",
-                "line": 15,
-                "severity": "medium",
-                "message": "Code complexity too high",
-                "rule": "pylint-C0901",
-                "recommendation": "Refactor function into smaller units"
-            }
-        ]
+        # Step 1: Filter files intelligently
+        config_path = Path("/app/config/smart_filters.yaml")
+        repo_path = Path(repo_dir)
 
-        # Save mock results
-        os.makedirs(output_dir, exist_ok=True)
+        filtered_files = filter_repository_files(repo_path, config_path)
+        file_summary = get_file_summary(filtered_files, repo_path)
 
-        with open(f"{output_dir}/030_scores.json", "w") as f:
-            json.dump({"scored_findings": mock_findings}, f)
+        job["message"] = f"Analyzing {len(filtered_files)} code files with AI..."
+        job["progress"] = 40
 
-        with open(f"{output_dir}/040_recommendations.md", "w") as f:
-            f.write("# Code Review Recommendations\n\n")
-            f.write("This is a mock report. Integration with crengine coming soon.\n\n")
-            for finding in mock_findings:
-                f.write(f"## {finding['severity'].upper()}: {finding['message']}\n")
-                f.write(f"**File**: {finding['file']} (line {finding['line']})\n\n")
-                f.write(f"{finding['recommendation']}\n\n")
+        # Step 2: Run AI-powered code review
+        # Check if AI provider is specified and API key exists
+        ai_provider = job.get("ai_provider") or "anthropic"  # Default to Anthropic
+        api_key = None
 
-        with open(f"{output_dir}/050_phased_plan.md", "w") as f:
-            f.write("# Phased Improvement Plan\n\n")
-            f.write("## Phase 1: Critical Issues\n")
-            f.write("- Fix security vulnerabilities\n\n")
-            f.write("## Phase 2: Code Quality\n")
-            f.write("- Reduce complexity\n")
-            f.write("- Improve maintainability\n")
+        if ai_provider == "anthropic":
+            api_key = os.environ.get("ANTHROPIC_API_KEY")
+        elif ai_provider == "openai":
+            api_key = os.environ.get("OPENAI_API_KEY")
+
+        if api_key:
+            # Real AI-powered review
+            findings = review_repository(
+                files=filtered_files,
+                repo_root=repo_path,
+                ai_provider=ai_provider,
+                api_key=api_key,
+                max_files=20  # Limit for cost control
+            )
+
+            job["progress"] = 80
+
+            # Save results
+            os.makedirs(output_dir, exist_ok=True)
+
+            # Convert findings to format expected by frontend
+            scored_findings = []
+            for finding in findings:
+                scored_findings.append({
+                    "file": finding.file,
+                    "line": finding.line_start,
+                    "line_end": finding.line_end,
+                    "severity": finding.severity,
+                    "category": finding.category,
+                    "title": finding.title,
+                    "message": finding.description,
+                    "reasoning": finding.reasoning,
+                    "recommendation": finding.suggestion,
+                    "confidence": finding.confidence
+                })
+
+            # Save JSON
+            with open(f"{output_dir}/030_scores.json", "w") as f:
+                json.dump({
+                    "scored_findings": scored_findings,
+                    "file_summary": file_summary,
+                    "ai_provider": ai_provider
+                }, f, indent=2)
+
+            # Generate markdown report
+            with open(f"{output_dir}/040_recommendations.md", "w") as f:
+                f.write("# AI-Powered Code Review Report\n\n")
+                f.write(f"**Analyzed Files**: {len(filtered_files)}\n")
+                f.write(f"**AI Provider**: {ai_provider}\n")
+                f.write(f"**Total Findings**: {len(findings)}\n\n")
+
+                # Group by severity
+                by_severity = {'critical': [], 'high': [], 'medium': [], 'low': [], 'info': []}
+                for finding in findings:
+                    by_severity[finding.severity].append(finding)
+
+                f.write("## Summary\n\n")
+                for severity in ['critical', 'high', 'medium', 'low', 'info']:
+                    count = len(by_severity[severity])
+                    if count > 0:
+                        f.write(f"- **{severity.capitalize()}**: {count}\n")
+
+                f.write("\n---\n\n")
+
+                # Write findings
+                for severity in ['critical', 'high', 'medium', 'low', 'info']:
+                    issues = by_severity[severity]
+                    if not issues:
+                        continue
+
+                    f.write(f"## {severity.capitalize()} Issues\n\n")
+
+                    for finding in issues:
+                        f.write(f"### {finding.title}\n\n")
+                        f.write(f"**File**: `{finding.file}:{finding.line_start}-{finding.line_end}`\n\n")
+                        f.write(f"**Category**: {finding.category}\n\n")
+                        f.write(f"**Issue**: {finding.description}\n\n")
+                        f.write(f"**Why It Matters**: {finding.reasoning}\n\n")
+                        f.write(f"**How to Fix**: {finding.suggestion}\n\n")
+                        f.write("---\n\n")
+
+            # Generate phased plan
+            with open(f"{output_dir}/050_phased_plan.md", "w") as f:
+                f.write("# Phased Improvement Plan\n\n")
+
+                # Group by severity for phasing
+                if by_severity['critical'] or by_severity['high']:
+                    f.write("## Phase 1: Critical & High Priority\n\n")
+                    for finding in by_severity['critical'] + by_severity['high']:
+                        f.write(f"- **{finding.file}**: {finding.title}\n")
+                    f.write("\n")
+
+                if by_severity['medium']:
+                    f.write("## Phase 2: Medium Priority\n\n")
+                    for finding in by_severity['medium']:
+                        f.write(f"- **{finding.file}**: {finding.title}\n")
+                    f.write("\n")
+
+                if by_severity['low'] or by_severity['info']:
+                    f.write("## Phase 3: Low Priority & Improvements\n\n")
+                    for finding in by_severity['low'] + by_severity['info']:
+                        f.write(f"- **{finding.file}**: {finding.title}\n")
+                    f.write("\n")
+
+        else:
+            # No API key - return helpful message
+            job["status"] = "failed"
+            job["error"] = f"No API key found for {ai_provider}. Set ANTHROPIC_API_KEY or OPENAI_API_KEY environment variable."
+            return
 
         # Mark as completed
         job["status"] = "completed"

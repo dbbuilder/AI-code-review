@@ -1,0 +1,167 @@
+# Smart File Filtering Configuration
+# Focus only on meaningful code files that benefit from AI review
+
+# Code files to analyze (source code only)
+include_patterns:
+  # Backend Languages
+  - "**/*.py"      # Python
+  - "**/*.js"      # JavaScript
+  - "**/*.ts"      # TypeScript
+  - "**/*.tsx"     # TypeScript React
+  - "**/*.jsx"     # JavaScript React
+  - "**/*.java"    # Java
+  - "**/*.cs"      # C#
+  - "**/*.go"      # Go
+  - "**/*.rs"      # Rust
+  - "**/*.rb"      # Ruby
+  - "**/*.php"     # PHP
+  - "**/*.swift"   # Swift
+  - "**/*.kt"      # Kotlin
+  - "**/*.scala"   # Scala
+
+  # Frontend/Styling (when they contain logic)
+  - "**/*.vue"     # Vue components
+  - "**/*.svelte"  # Svelte components
+
+  # Configuration that affects code behavior
+  - "**/package.json"
+  - "**/tsconfig.json"
+  - "**/Dockerfile"
+  - "**/*.yaml"
+  - "**/*.yml"
+  - "**/*.toml"
+
+# Files/directories to ALWAYS exclude (not useful for AI review)
+exclude_patterns:
+  # Dependencies
+  - "**/node_modules/**"
+  - "**/.venv/**"
+  - "**/venv/**"
+  - "**/env/**"
+  - "**/vendor/**"
+  - "**/packages/**"
+  - "**/bower_components/**"
+
+  # Build outputs
+  - "**/dist/**"
+  - "**/build/**"
+  - "**/out/**"
+  - "**/target/**"
+  - "**/.next/**"
+  - "**/.nuxt/**"
+  - "**/__pycache__/**"
+  - "**/*.pyc"
+  - "**/bin/**"
+  - "**/obj/**"
+
+  # Generated/compiled files
+  - "**/*.min.js"
+  - "**/*.min.css"
+  - "**/*.bundle.js"
+  - "**/*.chunk.js"
+  - "**/*.map"
+  - "**/*.d.ts"      # TypeScript declarations (auto-generated)
+
+  # Archives/binaries
+  - "**/*.zip"
+  - "**/*.tar"
+  - "**/*.gz"
+  - "**/*.rar"
+  - "**/*.exe"
+  - "**/*.dll"
+  - "**/*.so"
+  - "**/*.dylib"
+  - "**/*.jar"
+  - "**/*.war"
+
+  # Media files
+  - "**/*.jpg"
+  - "**/*.jpeg"
+  - "**/*.png"
+  - "**/*.gif"
+  - "**/*.svg"
+  - "**/*.ico"
+  - "**/*.mp4"
+  - "**/*.mp3"
+  - "**/*.wav"
+  - "**/*.pdf"
+
+  # Documentation (not code to review)
+  - "**/*.md"
+  - "**/*.txt"
+  - "**/docs/**"
+  - "**/documentation/**"
+  - "**/*.rst"
+
+  # Logs and temporary files
+  - "**/*.log"
+  - "**/logs/**"
+  - "**/*.tmp"
+  - "**/*.temp"
+  - "**/.cache/**"
+
+  # Test fixtures/mocks (large data files)
+  - "**/fixtures/**"
+  - "**/mocks/**"
+  - "**/__snapshots__/**"
+
+  # Git and version control
+  - "**/.git/**"
+  - "**/.gitignore"
+  - "**/.gitattributes"
+
+  # IDE/Editor files
+  - "**/.vscode/**"
+  - "**/.idea/**"
+  - "**/*.swp"
+  - "**/*.swo"
+  - "**/.DS_Store"
+
+  # CI/CD (unless specifically needed)
+  - "**/.github/workflows/**"  # Can be included if reviewing CI
+
+  # Lock files (large, auto-generated)
+  - "**/package-lock.json"
+  - "**/yarn.lock"
+  - "**/pnpm-lock.yaml"
+  - "**/Pipfile.lock"
+  - "**/poetry.lock"
+  - "**/Gemfile.lock"
+
+  # Scripts (unless they're application code)
+  - "**/scripts/**"    # Often deployment/build scripts, not app code
+  - "**/*.sh"          # Shell scripts usually not main code
+  - "**/*.bat"
+  - "**/*.ps1"
+
+# Maximum file size to analyze (in bytes)
+# Skip files larger than this (likely generated or data files)
+max_file_size: 1048576  # 1MB
+
+# Maximum total files to analyze per repository
+# Prevents overwhelming the AI with huge codebases
+max_files: 500
+
+# Priority: analyze these files first (most likely to have issues)
+priority_patterns:
+  - "**/src/**"        # Main source code
+  - "**/lib/**"        # Libraries
+  - "**/app/**"        # Application code
+  - "**/api/**"        # API endpoints
+  - "**/routes/**"     # Route handlers
+  - "**/controllers/**"
+  - "**/services/**"
+  - "**/models/**"
+  - "**/components/**"
+
+# Skip test files (optional - can be enabled for test quality review)
+skip_tests: false  # Set to true to skip test files
+test_patterns:
+  - "**/*.test.js"
+  - "**/*.test.ts"
+  - "**/*.spec.js"
+  - "**/*.spec.ts"
+  - "**/*_test.py"
+  - "**/*_test.go"
+  - "**/tests/**"
+  - "**/__tests__/**"
