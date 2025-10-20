@@ -5,12 +5,12 @@ import { ChevronDown, ChevronUp } from "lucide-react";
 
 const faqs = [
   {
-    question: "What is AutoVibe?",
-    answer: "AutoVibe is an AI-driven automated code review engine that analyzes your codebase, scores issues by difficulty/risk and value/importance, and provides a phased improvement plan. It combines deterministic static analysis with optional AI-powered insights to help you improve code quality systematically."
+    question: "What is AutoRev?",
+    answer: "AutoRev is an AI-driven automated code review engine that analyzes your codebase, scores issues by difficulty/risk and value/importance, and provides a phased improvement plan. It combines deterministic static analysis with optional AI-powered insights to help you improve code quality systematically."
   },
   {
-    question: "How does AutoVibe differ from other code review tools?",
-    answer: "AutoVibe is deterministic and repeatable—same commit + config = same results. It provides weighted scoring on two dimensions (Difficulty/Risk and Value/Importance), phase-based improvement plans, and optional AI integration for patch suggestions. Unlike many tools, it supports delta-optimized reviews to analyze only changed code for rapid iteration."
+    question: "How does AutoRev differ from other code review tools?",
+    answer: "AutoRev is deterministic and repeatable—same commit + config = same results. It provides weighted scoring on two dimensions (Difficulty/Risk and Value/Importance), phase-based improvement plans, and optional AI integration for patch suggestions. Unlike many tools, it supports delta-optimized reviews to analyze only changed code for rapid iteration."
   },
   {
     question: "Which programming languages are supported?",
@@ -37,8 +37,8 @@ const faqs = [
     answer: "Delta review uses Git history to detect changed files and hunks, then re-runs analysis only on those regions. This enables rapid iteration loops: make changes → delta review → see only new issues. Previous findings for unchanged code are preserved, making it perfect for pre-commit hooks."
   },
   {
-    question: "Is my code secure with AutoVibe?",
-    answer: "Yes. AutoVibe runs entirely in your environment (CLI or self-hosted worker). Code is never sent to AutoVibe servers. When you use AI features, only code snippets relevant to specific findings are sent to your chosen AI provider (OpenAI, Anthropic, or Gemini) with your API keys."
+    question: "Is my code secure with AutoRev?",
+    answer: "Yes. AutoRev runs entirely in your environment (CLI or self-hosted worker). Code is never sent to AutoRev servers. When you use AI features, only code snippets relevant to specific findings are sent to your chosen AI provider (OpenAI, Anthropic, or Gemini) with your API keys."
   },
   {
     question: "What kind of support do you offer?",
@@ -93,7 +93,7 @@ export default function FAQ() {
             Frequently Asked Questions
           </h2>
           <p className="text-xl text-gray-600 dark:text-gray-400">
-            Everything you need to know about AutoVibe
+            Everything you need to know about AutoRev
           </p>
         </div>
 

@@ -80,7 +80,7 @@ const features = [
 
 export default function Features() {
   return (
-    <section className="py-24 bg-white dark:bg-gray-900">
+    <section id="features" className="py-24 bg-white dark:bg-gray-900">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Section Header */}
         <div className="text-center mb-16">
@@ -88,7 +88,7 @@ export default function Features() {
             Powerful Features for Modern Development
           </h2>
           <p className="text-xl text-gray-600 dark:text-gray-400 max-w-3xl mx-auto">
-            AutoVibe combines deterministic static analysis with AI-powered insights
+            AutoRev combines deterministic static analysis with AI-powered insights
             to deliver actionable code reviews that improve quality and velocity.
           </p>
         </div>

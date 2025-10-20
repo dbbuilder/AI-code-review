@@ -1,8 +1,11 @@
 "use client";
 
-import { ArrowRight, Code2, Sparkles } from "lucide-react";
+import { ArrowRight, Code2, Sparkles, Github } from "lucide-react";
 
 export default function Hero() {
+  const handleGitHubSignIn = () => {
+    window.location.href = "/api/auth/github";
+  };
   return (
     <section className="relative min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-purple-900">
       {/* Background decoration */}
@@ -24,7 +27,7 @@ export default function Hero() {
           {/* Main Headline */}
           <h1 className="text-5xl md:text-7xl font-bold text-gray-900 dark:text-white mb-6">
             <span className="bg-clip-text text-transparent bg-gradient-to-r from-primary to-secondary">
-              AutoVibe
+              AutoRev
             </span>
           </h1>
 
@@ -45,13 +48,20 @@ export default function Hero() {
 
           {/* CTA Buttons */}
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-            <button className="group px-8 py-4 bg-primary hover:bg-primary-dark text-white font-semibold rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 flex items-center gap-2">
-              Get Started with GitHub
+            <button
+              onClick={handleGitHubSignIn}
+              className="group px-8 py-4 bg-primary hover:bg-primary-dark text-white font-semibold rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 flex items-center gap-2"
+            >
+              <Github className="w-5 h-5" />
+              Sign in with GitHub
               <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
             </button>
-            <button className="px-8 py-4 bg-white dark:bg-gray-800 text-primary hover:text-primary-dark font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-200 border-2 border-primary">
-              View Live Demo
-            </button>
+            <a
+              href="#features"
+              className="px-8 py-4 bg-white dark:bg-gray-800 text-primary hover:text-primary-dark font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-200 border-2 border-primary"
+            >
+              Explore Features
+            </a>
           </div>
 
           {/* Trust Indicators */}
