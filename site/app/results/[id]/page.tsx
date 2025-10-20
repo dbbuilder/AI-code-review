@@ -156,11 +156,11 @@ export default function ResultsPage() {
     "Product Polish",
   ];
 
-  const filteredFindings = result?.findings.filter((finding) => {
+  const filteredFindings = result?.findings?.filter((finding) => {
     if (selectedSeverity && finding.severity !== selectedSeverity) return false;
     if (selectedPhase !== null && finding.phase !== selectedPhase) return false;
     return true;
-  });
+  }) || [];
 
   if (loading) {
     return (
@@ -227,7 +227,7 @@ export default function ResultsPage() {
               Total Findings
             </h3>
             <p className="text-3xl font-bold text-gray-900 dark:text-white">
-              {result.summary.totalFindings}
+              {result.summary?.totalFindings || 0}
             </p>
           </div>
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
@@ -235,7 +235,7 @@ export default function ResultsPage() {
               Critical/High
             </h3>
             <p className="text-3xl font-bold text-red-600">
-              {result.summary.bySeverity.critical + result.summary.bySeverity.high}
+              {(result.summary?.bySeverity?.critical || 0) + (result.summary?.bySeverity?.high || 0)}
             </p>
           </div>
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
@@ -243,7 +243,7 @@ export default function ResultsPage() {
               Estimated Effort
             </h3>
             <p className="text-3xl font-bold text-gray-900 dark:text-white">
-              {result.summary.estimatedEffort}h
+              {result.summary?.estimatedEffort || 0}h
             </p>
           </div>
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
