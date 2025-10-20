@@ -1,0 +1,7 @@
+rules:
+  - id: no-eval-python
+    patterns:
+      - pattern: eval(...)
+    message: "Use of eval() is dangerous; avoid or sanitize inputs."
+    severity: ERROR
+    languages: [python]

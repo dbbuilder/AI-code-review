@@ -1,0 +1,10 @@
+include:
+  - "**/*.py"
+  - "**/*.js"
+  - "**/*.ts"
+  - "**/*.cs"
+exclude:
+  - "**/.venv/**"
+  - "**/node_modules/**"
+  - "**/bin/**"
+  - "**/obj/**"

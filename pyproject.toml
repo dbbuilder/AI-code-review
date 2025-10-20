@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=70", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "code-review-engine"
+version = "0.1.0"
+description = "Deterministic, AI-optional code review pipeline with phased planning and delta re-review"
+authors = [{ name = "Your Org" }]
+requires-python = ">=3.10"
+dependencies = [
+  "pydantic>=2.7",
+  "pyyaml>=6.0",
+  "rich>=13.7",
+  "gitpython>=3.1",
+  "tree-sitter>=0.21",
+  "tree-sitter-languages>=1.10",
+  "semgrep>=1.75.0",
+  "flake8>=7.0.0",
+  "bandit>=1.7.9",
+  "pylint>=3.2.0",
+  "tenacity>=9.0.0"
+]
+
+[project.optional-dependencies]
+ai = [
+  "openai>=1.40.0",
+  "anthropic>=0.34.0",
+  "google-genai>=0.3.0"
+]
+
+[project.scripts]
+crengine = "cli:main"
