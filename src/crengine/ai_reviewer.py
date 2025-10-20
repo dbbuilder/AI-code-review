@@ -9,6 +9,7 @@ from typing import List, Dict, Optional
 from dataclasses import dataclass, asdict
 import anthropic
 import openai
+from openai import OpenAI
 from tenacity import retry, stop_after_attempt, wait_exponential
 
 
@@ -153,7 +154,7 @@ def review_with_openai(
     code_content: str,
     language: str,
     api_key: str,
-    model: str = "gpt-4o"
+    model: str = "gpt-4o-mini"
 ) -> List[CodeReviewFinding]:
     """
     Review code using OpenAI GPT-4
@@ -200,12 +201,77 @@ def review_with_openai(
         raise  # Let retry handle it
 
 
+@retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10))
+def review_with_openrouter(
+    file_path: str,
+    code_content: str,
+    language: str,
+    api_key: str,
+    model: str = "openai/gpt-4o-mini"
+) -> List[CodeReviewFinding]:
+    """
+    Review code using OpenRouter (supports multiple models)
+
+    OpenRouter provides access to many models:
+    - openai/gpt-4o-mini (fast, cheap)
+    - openai/gpt-4o (best quality)
+    - anthropic/claude-3.5-sonnet
+    - google/gemini-pro-1.5
+    - meta-llama/llama-3.1-70b-instruct
+    And many more...
+
+    Uses retry logic for rate limiting
+    """
+    client = OpenAI(
+        base_url="https://openrouter.ai/api/v1",
+        api_key=api_key
+    )
+
+    prompt = create_review_prompt(file_path, code_content, language)
+
+    try:
+        response = client.chat.completions.create(
+            model=model,
+            messages=[
+                {"role": "system", "content": REVIEW_SYSTEM_PROMPT},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.3,
+            max_tokens=4096
+        )
+
+        # Extract JSON from response
+        content = response.choices[0].message.content.strip()
+
+        # Handle markdown code blocks if present
+        if content.startswith('```'):
+            lines = content.split('\n')
+            content = '\n'.join(lines[1:-1])
+
+        findings_data = json.loads(content)
+
+        # Convert to CodeReviewFinding objects
+        findings = []
+        for finding in findings_data:
+            findings.append(CodeReviewFinding(**finding))
+
+        return findings
+
+    except json.JSONDecodeError as e:
+        print(f"Failed to parse JSON response for {file_path}: {e}")
+        return []
+    except Exception as e:
+        print(f"Error reviewing {file_path} with OpenRouter: {e}")
+        raise  # Let retry handle it
+
+
 def review_file(
     file_path: Path,
     repo_root: Path,
     ai_provider: str,
     api_key: str,
-    language: Optional[str] = None
+    language: Optional[str] = None,
+    model: Optional[str] = None
 ) -> List[CodeReviewFinding]:
     """
     Review a single file using AI
@@ -213,9 +279,10 @@ def review_file(
     Args:
         file_path: Path to the file
         repo_root: Repository root for relative paths
-        ai_provider: 'anthropic' or 'openai'
+        ai_provider: 'openai', 'anthropic', or 'openrouter'
         api_key: API key for the provider
         language: Programming language (auto-detected if None)
+        model: Specific model to use (optional, uses provider default)
 
     Returns:
         List of findings for this file
@@ -263,9 +330,17 @@ def review_file(
 
     # Call appropriate AI provider
     if ai_provider.lower() == 'anthropic':
+        if model:
+            return review_with_anthropic(relative_path, code_content, language, api_key, model)
         return review_with_anthropic(relative_path, code_content, language, api_key)
     elif ai_provider.lower() == 'openai':
+        if model:
+            return review_with_openai(relative_path, code_content, language, api_key, model)
         return review_with_openai(relative_path, code_content, language, api_key)
+    elif ai_provider.lower() == 'openrouter':
+        if model:
+            return review_with_openrouter(relative_path, code_content, language, api_key, model)
+        return review_with_openrouter(relative_path, code_content, language, api_key)
     else:
         raise ValueError(f"Unknown AI provider: {ai_provider}")
 

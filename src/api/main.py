@@ -289,13 +289,15 @@ async def run_analysis(job_id: str):
 
         # Step 2: Run AI-powered code review
         # Check if AI provider is specified and API key exists
-        ai_provider = job.get("ai_provider") or "anthropic"  # Default to Anthropic
+        ai_provider = job.get("ai_provider") or "openai"  # Default to OpenAI
         api_key = None
 
         if ai_provider == "anthropic":
             api_key = os.environ.get("ANTHROPIC_API_KEY")
         elif ai_provider == "openai":
             api_key = os.environ.get("OPENAI_API_KEY")
+        elif ai_provider == "openrouter":
+            api_key = os.environ.get("OPENROUTER_API_KEY")
 
         if api_key:
             # Real AI-powered review
