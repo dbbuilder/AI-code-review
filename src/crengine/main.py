@@ -178,10 +178,23 @@ Return a unified diff."""
             )
         try:
             with console.status(f"[cyan]Calling {provider} API...") as status:
-                patches = propose_patches(provider, cfg["ai"]["model"][provider], prompts)
+                patches, cost_info = propose_patches(
+                    provider,
+                    cfg["ai"]["model"][provider],
+                    prompts,
+                    max_output_tokens=cfg["ai"]["max_output_tokens"],
+                    temperature=cfg["ai"]["temperature"],
+                    rate_limit_rps=cfg["ai"]["rate_limit_rps"],
+                    return_cost=True
+                )
                 md = "# AI Patch Suggestions\n\n" + "\n\n---\n\n".join(patches)
                 write_text(out_dir / "060_ai_patch_suggestions.md", md)
+
+            # Log cost information
             console.log(f"[green]✓[/green] Wrote 060_ai_patch_suggestions.md ({len(patches)} patches)")
+            console.print(f"  [cyan]Total Cost:[/cyan] ${cost_info['total_cost']:.4f}")
+            console.print(f"  [cyan]Tokens:[/cyan] {cost_info['total_input_tokens']} input + {cost_info['total_output_tokens']} output = {cost_info['total_tokens']} total")
+            console.print(f"  [cyan]Avg Cost/Request:[/cyan] ${cost_info['cost_per_request']:.4f}")
         except Exception as ex:
             console.print(f"[yellow]AI patch step skipped:[/yellow] {ex}")
 
