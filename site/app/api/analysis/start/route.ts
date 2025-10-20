@@ -3,9 +3,7 @@ import { verifySessionToken } from '@/lib/auth';
 
 /**
  * Start Analysis API
- * Phase 7.3: Triggers code review analysis for a repository
- *
- * TODO Phase 7.4-7.5: Implement actual backend integration with FastAPI worker
+ * Phase 7.4: Proxies analysis requests to Railway backend
  */
 export async function POST(request: NextRequest) {
   const sessionCookie = request.cookies.get('session');
@@ -28,20 +26,38 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Repository is required' }, { status: 400 });
     }
 
-    // Generate analysis ID
-    const analysisId = `analysis_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    // Call Railway backend API
+    const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || 'https://authentic-nurturing-production-9807.up.railway.app';
 
-    // TODO Phase 7.4: Store analysis request in database
-    // TODO Phase 7.5: Queue job in Celery/Redis worker
-    // For now, return mock response
+    const backendResponse = await fetch(`${BACKEND_URL}/api/analysis/start`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        repo_url: repository,
+        branch: branch || 'main',
+        preset: preset || 'comprehensive',
+      }),
+    });
+
+    if (!backendResponse.ok) {
+      const error = await backendResponse.json();
+      return NextResponse.json(
+        { error: error.detail || 'Failed to start analysis' },
+        { status: backendResponse.status }
+      );
+    }
+
+    const result = await backendResponse.json();
 
     return NextResponse.json({
-      analysisId,
+      analysisId: result.id,
       repository,
       preset: preset || 'comprehensive',
       branch: branch || 'main',
-      status: 'queued',
-      message: 'Analysis has been queued successfully',
+      status: result.status,
+      message: result.message,
       estimatedTime: 180, // seconds
     });
   } catch (error) {
