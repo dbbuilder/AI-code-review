@@ -23,11 +23,21 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 from src.crengine.smart_filter import filter_repository_files, get_file_summary
 from src.crengine.ai_reviewer import review_repository, save_findings_json, generate_markdown_report
 
+# Import database module
+from src.api.database import init_db, get_job, create_job, update_job, save_job_results, AnalysisJob
+
 app = FastAPI(
     title="AutoRev Code Review API",
     description="AI-driven automated code review engine",
     version="1.0.0"
 )
+
+# Initialize database on startup
+@app.on_event("startup")
+async def startup_event():
+    """Initialize database connection on startup"""
+    init_db()
+    print("Database initialized successfully")
 
 # CORS configuration for Vercel frontend
 app.add_middleware(
@@ -41,9 +51,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-# In-memory job storage (replace with PostgreSQL in production)
-analysis_jobs = {}
 
 
 class AnalysisRequest(BaseModel):
@@ -135,30 +142,36 @@ async def start_analysis(
     # Generate job ID
     job_id = str(uuid.uuid4())
 
-    # Create job record
-    job = {
+    # Create job record in database
+    job_data = {
         "id": job_id,
         "status": "queued",
         "repo_url": request.repo_url,
         "branch": request.branch,
         "preset": request.preset,
         "ai_provider": request.ai_provider,
-        "github_token": request.github_token,
-        "created_at": datetime.utcnow().isoformat(),
-        "started_at": None,
-        "completed_at": None,
         "progress": 0,
-        "message": "Analysis queued",
-        "result_url": None,
-        "error": None
+        "message": "Analysis queued"
     }
 
-    analysis_jobs[job_id] = job
+    job = create_job(job_data)
 
-    # Queue background analysis
-    background_tasks.add_task(run_analysis, job_id)
+    # Queue background analysis (pass github_token separately as it's not stored in DB)
+    background_tasks.add_task(run_analysis, job_id, request.github_token)
 
-    return AnalysisStatus(**job)
+    return AnalysisStatus(
+        id=job.id,
+        status=job.status,
+        repo_url=job.repo_url,
+        branch=job.branch,
+        created_at=job.created_at.isoformat(),
+        started_at=job.started_at.isoformat() if job.started_at else None,
+        completed_at=job.completed_at.isoformat() if job.completed_at else None,
+        progress=job.progress,
+        message=job.message,
+        result_url=job.result_url,
+        error=job.error
+    )
 
 
 @app.get("/api/analysis/status/{job_id}", response_model=AnalysisStatus)
@@ -168,11 +181,24 @@ async def get_analysis_status(job_id: str):
 
     Frontend polls this endpoint to check progress
     """
-    if job_id not in analysis_jobs:
+    job = get_job(job_id)
+
+    if not job:
         raise HTTPException(status_code=404, detail="Analysis job not found")
 
-    job = analysis_jobs[job_id]
-    return AnalysisStatus(**job)
+    return AnalysisStatus(
+        id=job.id,
+        status=job.status,
+        repo_url=job.repo_url,
+        branch=job.branch,
+        created_at=job.created_at.isoformat(),
+        started_at=job.started_at.isoformat() if job.started_at else None,
+        completed_at=job.completed_at.isoformat() if job.completed_at else None,
+        progress=job.progress,
+        message=job.message,
+        result_url=job.result_url,
+        error=job.error
+    )
 
 
 @app.get("/api/analysis/result/{job_id}")
@@ -182,15 +208,15 @@ async def get_analysis_result(job_id: str):
 
     Returns detailed findings, recommendations, and phased plan
     """
-    if job_id not in analysis_jobs:
+    job = get_job(job_id)
+
+    if not job:
         raise HTTPException(status_code=404, detail="Analysis job not found")
 
-    job = analysis_jobs[job_id]
-
-    if job["status"] != "completed":
+    if job.status != "completed":
         raise HTTPException(
             status_code=400,
-            detail=f"Analysis not completed yet. Current status: {job['status']}"
+            detail=f"Analysis not completed yet. Current status: {job.status}"
         )
 
     # Load results from outputs directory
@@ -219,8 +245,8 @@ async def get_analysis_result(job_id: str):
 
         return AnalysisResult(
             id=job_id,
-            repo_url=job["repo_url"],
-            branch=job["branch"],
+            repo_url=job.repo_url,
+            branch=job.branch,
             total_findings=len(findings),
             critical_findings=critical,
             high_findings=high,
@@ -237,7 +263,7 @@ async def get_analysis_result(job_id: str):
         )
 
 
-async def run_analysis(job_id: str):
+async def run_analysis(job_id: str, github_token: Optional[str] = None):
     """
     Background task to run code analysis
 
@@ -248,18 +274,21 @@ async def run_analysis(job_id: str):
     4. Saves results
     5. Updates job status to "completed" or "failed"
     """
-    job = analysis_jobs[job_id]
-
     try:
         # Update status to running
-        job["status"] = "running"
-        job["started_at"] = datetime.utcnow().isoformat()
-        job["message"] = "Cloning repository..."
-        job["progress"] = 10
+        update_job(job_id, {
+            "status": "running",
+            "started_at": datetime.utcnow(),
+            "message": "Cloning repository...",
+            "progress": 10
+        })
 
         # Create output directory for this job
         output_dir = f"/app/outputs/{job_id}"
         os.makedirs(output_dir, exist_ok=True)
+
+        # Get job details
+        job = get_job(job_id)
 
         # Clone repository to temp directory
         repo_dir = f"/app/temp/{job_id}"
@@ -267,25 +296,27 @@ async def run_analysis(job_id: str):
 
         # Clone repo using git
         import subprocess
-        clone_cmd = ["git", "clone", "--depth", "1", "--branch", job["branch"]]
-        if job.get("github_token"):
+        clone_cmd = ["git", "clone", "--depth", "1", "--branch", job.branch]
+        if github_token:
             # Insert token into URL for private repos
-            repo_url = job["repo_url"]
+            repo_url = job.repo_url
             if "github.com" in repo_url:
-                repo_url = repo_url.replace("https://", f"https://{job['github_token']}@")
+                repo_url = repo_url.replace("https://", f"https://{github_token}@")
             clone_cmd.extend([repo_url, repo_dir])
         else:
-            clone_cmd.extend([job["repo_url"], repo_dir])
+            clone_cmd.extend([job.repo_url, repo_dir])
 
-        job["message"] = "Cloning repository..."
+        update_job(job_id, {"message": "Cloning repository..."})
         result = subprocess.run(clone_cmd, capture_output=True, text=True, timeout=300)
 
         if result.returncode != 0:
             raise Exception(f"Failed to clone repository: {result.stderr}")
 
         # Run analysis
-        job["message"] = "Filtering relevant code files..."
-        job["progress"] = 30
+        update_job(job_id, {
+            "message": "Filtering relevant code files...",
+            "progress": 30
+        })
 
         import json
 
@@ -296,12 +327,14 @@ async def run_analysis(job_id: str):
         filtered_files = filter_repository_files(repo_path, config_path)
         file_summary = get_file_summary(filtered_files, repo_path)
 
-        job["message"] = f"Analyzing {len(filtered_files)} code files with AI..."
-        job["progress"] = 40
+        update_job(job_id, {
+            "message": f"Analyzing {len(filtered_files)} code files with AI...",
+            "progress": 40
+        })
 
         # Step 2: Run AI-powered code review
         # Check if AI provider is specified and API key exists
-        ai_provider = job.get("ai_provider") or "openai"  # Default to OpenAI
+        ai_provider = job.ai_provider or "openai"  # Default to OpenAI
         api_key = None
 
         if ai_provider == "anthropic":
@@ -321,7 +354,7 @@ async def run_analysis(job_id: str):
                 max_files=20  # Limit for cost control
             )
 
-            job["progress"] = 80
+            update_job(job_id, {"progress": 80})
 
             # Save results
             os.makedirs(output_dir, exist_ok=True)
@@ -412,16 +445,20 @@ async def run_analysis(job_id: str):
 
         else:
             # No API key - return helpful message
-            job["status"] = "failed"
-            job["error"] = f"No API key found for {ai_provider}. Set ANTHROPIC_API_KEY or OPENAI_API_KEY environment variable."
+            update_job(job_id, {
+                "status": "failed",
+                "error": f"No API key found for {ai_provider}. Set ANTHROPIC_API_KEY or OPENAI_API_KEY environment variable."
+            })
             return
 
         # Mark as completed
-        job["status"] = "completed"
-        job["completed_at"] = datetime.utcnow().isoformat()
-        job["progress"] = 100
-        job["message"] = "Analysis completed successfully"
-        job["result_url"] = f"/api/analysis/result/{job_id}"
+        update_job(job_id, {
+            "status": "completed",
+            "completed_at": datetime.utcnow(),
+            "progress": 100,
+            "message": "Analysis completed successfully",
+            "result_url": f"/api/analysis/result/{job_id}"
+        })
 
         # Cleanup temp directory
         import shutil
@@ -429,10 +466,12 @@ async def run_analysis(job_id: str):
 
     except Exception as e:
         # Mark as failed
-        job["status"] = "failed"
-        job["completed_at"] = datetime.utcnow().isoformat()
-        job["error"] = str(e)
-        job["message"] = f"Analysis failed: {str(e)}"
+        update_job(job_id, {
+            "status": "failed",
+            "completed_at": datetime.utcnow(),
+            "error": str(e),
+            "message": f"Analysis failed: {str(e)}"
+        })
         print(f"Analysis failed for job {job_id}: {str(e)}")
 
 
