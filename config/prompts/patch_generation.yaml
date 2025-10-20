@@ -1,0 +1,105 @@
+# Prompt template for AI-based patch generation
+# Variables available: {file}, {line}, {tool}, {rule_id}, {message}, {severity}, {context_before}, {context_after}, {full_context}
+
+system_prompt: |
+  You are an expert code reviewer and software engineer. Your task is to generate minimal, safe patches to fix code quality issues.
+
+  Guidelines:
+  - Preserve existing behavior and tests
+  - Follow the existing code style and conventions
+  - Make minimal changes - fix only what's necessary
+  - Add comments explaining non-obvious changes
+  - Include tests if the change affects logic
+  - Return ONLY a unified diff format (no explanations outside the diff)
+
+patch_template: |
+  Fix the following code quality issue:
+
+  **File**: {file}
+  **Line**: {line}
+  **Tool/Rule**: {tool} / {rule_id}
+  **Severity**: {severity}
+  **Issue**: {message}
+
+  **Current Code Context**:
+  ```
+  {full_context}
+  ```
+
+  **Requirements**:
+  1. Generate a unified diff (diff -u format) that fixes this issue
+  2. Preserve all existing functionality and tests
+  3. Follow the existing code style
+  4. Make minimal changes - only fix what's necessary
+  5. Add brief inline comments if the fix is non-obvious
+
+  **Constraints**:
+  - Do NOT refactor unrelated code
+  - Do NOT change variable/function names unless required for the fix
+  - Do NOT add new dependencies unless absolutely necessary
+  - Do NOT remove existing comments or documentation
+
+  Return your response as a unified diff starting with:
+  ```diff
+  --- a/{file}
+  +++ b/{file}
+  ```
+
+security_patch_template: |
+  Fix the following SECURITY issue:
+
+  **File**: {file}
+  **Line**: {line}
+  **Security Rule**: {rule_id}
+  **Severity**: {severity}
+  **Vulnerability**: {message}
+
+  **Current Code Context**:
+  ```
+  {full_context}
+  ```
+
+  **Security Requirements**:
+  1. Eliminate the security vulnerability completely
+  2. Use secure alternatives from standard libraries
+  3. Add input validation if missing
+  4. Add security-focused comments explaining the fix
+  5. Ensure no new vulnerabilities are introduced
+
+  **Examples of Secure Patterns**:
+  - Use `subprocess` with argument lists instead of `shell=True`
+  - Use parameterized queries instead of string concatenation
+  - Validate and sanitize all user input
+  - Use constant-time comparison for sensitive data
+
+  Return a unified diff that securely fixes this vulnerability:
+
+performance_patch_template: |
+  Optimize the following PERFORMANCE issue:
+
+  **File**: {file}
+  **Line**: {line}
+  **Performance Rule**: {rule_id}
+  **Issue**: {message}
+
+  **Current Code Context**:
+  ```
+  {full_context}
+  ```
+
+  **Optimization Requirements**:
+  1. Improve algorithmic complexity if possible
+  2. Reduce unnecessary iterations or allocations
+  3. Use appropriate data structures
+  4. Add comments explaining the optimization
+  5. Ensure correctness is preserved
+
+  **Common Optimizations**:
+  - Use list comprehensions instead of loops where appropriate
+  - Cache expensive computations
+  - Use generators for large datasets
+  - Avoid repeated lookups (use variables)
+
+  Return a unified diff with the optimized code:
+
+context_lines: 5  # Number of lines before/after to include in context

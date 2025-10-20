@@ -12,6 +12,7 @@ from .consolidate import to_phases, to_phases_from_config, generate_enhanced_rec
 from .ai_apply import propose_patches
 from .diffscan import changed_files
 from .utils import write_json, write_text
+from .prompt_generation import generate_patch_prompt
 
 console = Console()
 
@@ -167,15 +168,13 @@ def run_full_pass(repo: str, outputs: str, ai_override: Optional[str] = None):
         console.print(f"\n[cyan]AI Provider:[/cyan] {provider}")
         prompts = []
         for it in scored[:20]:  # cap to avoid token blowups
-            prompts.append(
-f"""You are a senior reviewer. Propose a minimal diff to resolve:
-File: {it.finding.file}
-Line: {it.finding.line}
-Tool/Rule: {it.finding.tool}/{it.finding.rule_id}
-Message: {it.finding.message}
-Constraints: Keep behavior, add tests if needed, explain rationale succinctly.
-Return a unified diff."""
+            # Use enhanced prompt with file context
+            prompt = generate_patch_prompt(
+                it.finding,
+                context_lines=5,
+                include_system_prompt=True
             )
+            prompts.append(prompt)
         try:
             with console.status(f"[cyan]Calling {provider} API...") as status:
                 patches, cost_info = propose_patches(

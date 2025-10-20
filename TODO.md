@@ -12,14 +12,19 @@ This document outlines the phased plan to complete the **code-review-engine** as
 - ✅ Basic static analysis adapters (Flake8, Bandit, Semgrep)
 - ✅ **Config-driven scoring with weighted dimensions** (Phase 1)
 - ✅ **Config-driven phase routing** (Phase 1)
-- ✅ AI provider stubs (OpenAI, Anthropic, Gemini)
+- ✅ **Enhanced recommendation formatting with rationale** (Phase 1)
+- ✅ **Error handling and user feedback** (Phase 1)
+- ✅ **Real AI provider integration** (Phase 2.1)
+- ✅ **Rate limiting and cost tracking** (Phase 2.1)
 - ✅ Git diff scanning for delta reviews
 - ✅ Output artifact generation (JSON/MD)
-- ✅ **Comprehensive test suite: 156 tests, 90.16% coverage** (Phase 0)
+- ✅ **Comprehensive test suite: 174 tests, 84.38% coverage** (Phase 0 & 2.1)
 
 **In Progress**:
-- ⏳ Enhanced recommendation formatting with rationale (Phase 1)
-- ⏳ Error handling and user feedback (Phase 1)
+- ⏳ Enhanced AI prompting with context (Phase 2.2)
+
+**PRIORITY AFTER PHASE 2**:
+- 🎯 **Phase 7: Web Platform & SaaS** (Landing page, GitHub OAuth, repository connector)
 
 **Remaining**:
 - ❌ No Tree-sitter integration for structural parsing
