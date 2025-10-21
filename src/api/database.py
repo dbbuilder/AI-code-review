@@ -113,7 +113,10 @@ def get_db():
 def get_job(job_id: str) -> Optional[AnalysisJob]:
     """Get analysis job by ID"""
     with get_db() as db:
-        return db.query(AnalysisJob).filter_by(id=job_id).first()
+        job = db.query(AnalysisJob).filter_by(id=job_id).first()
+        if job:
+            db.expunge(job)  # Detach from session so it can be used after
+        return job
 
 
 def create_job(job_data: dict) -> AnalysisJob:
@@ -124,6 +127,8 @@ def create_job(job_data: dict) -> AnalysisJob:
             db.add(job)
             db.commit()
             db.refresh(job)
+            # Expunge from session so it can be used after session closes
+            db.expunge(job)
             return job
     except Exception as e:
         print(f"❌ Failed to create job: {str(e)}")
@@ -140,6 +145,7 @@ def update_job(job_id: str, updates: dict) -> Optional[AnalysisJob]:
                 setattr(job, key, value)
             db.commit()
             db.refresh(job)
+            db.expunge(job)  # Detach from session
         return job
 
 
