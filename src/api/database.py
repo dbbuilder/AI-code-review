@@ -5,7 +5,7 @@ Database models and connection management for AutoRev API
 from datetime import datetime
 from typing import Optional
 import os
-from sqlalchemy import create_engine, Column, String, Integer, DateTime, Text, JSON
+from sqlalchemy import create_engine, Column, String, Integer, DateTime, Text, JSON, Boolean
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session
 from contextlib import contextmanager
@@ -46,6 +46,28 @@ class AnalysisJob(Base):
     # Store findings as JSON for completed analyses
     findings = Column(JSON, nullable=True)
     summary = Column(JSON, nullable=True)
+
+
+class InvitationRequest(Base):
+    """
+    Invitation requests from users wanting access to AutoRev
+    """
+    __tablename__ = "invitation_requests"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    email = Column(String, nullable=False, unique=True, index=True)
+    name = Column(String, nullable=True)
+    reason = Column(Text, nullable=True)
+    company = Column(String, nullable=True)
+
+    status = Column(String, nullable=False, default="pending")  # pending, approved, rejected
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    reviewed_at = Column(DateTime, nullable=True)
+    reviewed_by = Column(String, nullable=True)  # Email of admin who reviewed
+
+    # Clerk invitation
+    clerk_invitation_id = Column(String, nullable=True)
+    invited_at = Column(DateTime, nullable=True)
 
 
 def init_db():
