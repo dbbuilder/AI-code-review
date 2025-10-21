@@ -6,17 +6,9 @@ import { verifySessionToken } from '@/lib/auth';
  * Phase 7.4: Proxies analysis requests to Railway backend
  */
 export async function POST(request: NextRequest) {
+  // Authentication is now optional - only required for private repositories
   const sessionCookie = request.cookies.get('session');
-
-  if (!sessionCookie) {
-    return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
-  }
-
-  const session = verifySessionToken(sessionCookie.value);
-
-  if (!session) {
-    return NextResponse.json({ error: 'Invalid or expired session' }, { status: 401 });
-  }
+  const session = sessionCookie ? verifySessionToken(sessionCookie.value) : null;
 
   try {
     const body = await request.json();

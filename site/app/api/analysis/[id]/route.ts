@@ -9,17 +9,9 @@ export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  // Authentication is now optional - analysis results are publicly accessible by ID
   const sessionCookie = request.cookies.get('session');
-
-  if (!sessionCookie) {
-    return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
-  }
-
-  const session = verifySessionToken(sessionCookie.value);
-
-  if (!session) {
-    return NextResponse.json({ error: 'Invalid or expired session' }, { status: 401 });
-  }
+  const session = sessionCookie ? verifySessionToken(sessionCookie.value) : null;
 
   try {
     const { id } = params;

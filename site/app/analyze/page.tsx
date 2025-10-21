@@ -7,8 +7,9 @@ import { ArrowLeft, Play, Settings, GitBranch, AlertCircle, CheckCircle2 } from 
 function AnalyzePageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const repoName = searchParams.get("repo");
+  const urlRepo = searchParams.get("repo");
 
+  const [repoUrl, setRepoUrl] = useState(urlRepo || "");
   const [selectedPreset, setSelectedPreset] = useState("comprehensive");
   const [selectedBranch, setSelectedBranch] = useState("main");
   const [analyzing, setAnalyzing] = useState(false);
@@ -57,7 +58,7 @@ function AnalyzePageContent() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          repository: repoName,
+          repository: repoUrl,
           preset: selectedPreset,
           branch: selectedBranch,
         }),
@@ -106,13 +107,29 @@ function AnalyzePageContent() {
             <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
               Configure Analysis
             </h1>
-            <p className="text-lg text-gray-600 dark:text-gray-400">
-              Repository: <span className="font-mono">{repoName}</span>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+              Analyze any public GitHub repository without signing in!
             </p>
           </div>
 
           {/* Configuration */}
           <div className="space-y-8">
+            {/* Repository URL Input */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-3">
+                GitHub Repository URL
+              </label>
+              <input
+                type="text"
+                value={repoUrl}
+                onChange={(e) => setRepoUrl(e.target.value)}
+                placeholder="https://github.com/username/repository"
+                className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent font-mono"
+              />
+              <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+                Enter any public GitHub repository URL (e.g., https://github.com/dbbuilder/SQLExtract)
+              </p>
+            </div>
             {/* Preset Selection */}
             <div>
               <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-3">
@@ -168,8 +185,9 @@ function AnalyzePageContent() {
                   <p className="font-semibold mb-1">Analysis Details:</p>
                   <ul className="list-disc list-inside space-y-1">
                     <li>Estimated time: 2-5 minutes</li>
-                    <li>You'll receive an email when complete</li>
-                    <li>Results will be available in the dashboard</li>
+                    <li>No login required for public repositories</li>
+                    <li>Results persist in our database</li>
+                    <li>Bookmark the results URL to access later</li>
                   </ul>
                 </div>
               </div>
