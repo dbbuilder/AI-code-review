@@ -179,3 +179,60 @@ def save_job_results(job_id: str, findings: list, summary: dict):
             job.findings = findings
             job.summary = summary
             db.commit()
+
+
+# Invitation Request Functions
+
+def create_invitation_request(email: str, name: Optional[str] = None,
+                              reason: Optional[str] = None, company: Optional[str] = None) -> InvitationRequest:
+    """Create new invitation request"""
+    try:
+        with get_db() as db:
+            invitation = InvitationRequest(
+                email=email,
+                name=name,
+                reason=reason,
+                company=company,
+                status="pending",
+                created_at=datetime.utcnow()
+            )
+            db.add(invitation)
+            db.commit()
+            db.refresh(invitation)
+            db.expunge(invitation)
+            return invitation
+    except Exception as e:
+        print(f"❌ Failed to create invitation request: {str(e)}")
+        raise
+
+
+def get_invitation_request_by_email(email: str) -> Optional[InvitationRequest]:
+    """Get invitation request by email"""
+    with get_db() as db:
+        request = db.query(InvitationRequest).filter_by(email=email).first()
+        if request:
+            db.expunge(request)
+        return request
+
+
+def get_all_invitation_requests() -> list:
+    """Get all invitation requests"""
+    with get_db() as db:
+        requests = db.query(InvitationRequest).order_by(InvitationRequest.created_at.desc()).all()
+        # Expunge all from session
+        for req in requests:
+            db.expunge(req)
+        return requests
+
+
+def update_invitation_request(request_id: int, updates: dict) -> Optional[InvitationRequest]:
+    """Update invitation request"""
+    with get_db() as db:
+        request = db.query(InvitationRequest).filter_by(id=request_id).first()
+        if request:
+            for key, value in updates.items():
+                setattr(request, key, value)
+            db.commit()
+            db.refresh(request)
+            db.expunge(request)
+        return request

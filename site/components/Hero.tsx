@@ -1,15 +1,24 @@
 "use client";
 
-import { ArrowRight, Code2, Sparkles, Github } from "lucide-react";
+import { ArrowRight, Code2, Sparkles, LogIn } from "lucide-react";
+import { useAuth } from "@clerk/nextjs";
+import { useRouter } from "next/navigation";
 
 export default function Hero() {
-  const handleGitHubSignIn = () => {
-    window.location.href = "/api/auth/github";
+  const { isSignedIn } = useAuth();
+  const router = useRouter();
+
+  const handleSignIn = () => {
+    router.push("/sign-in");
   };
 
   const handleTryDemo = () => {
     // Navigate to analyze page with a demo repo pre-filled
-    window.location.href = "/analyze?repo=https://github.com/dbbuilder/SQLExtract";
+    router.push("/analyze?repo=https://github.com/dbbuilder/SQLExtract");
+  };
+
+  const handleDashboard = () => {
+    router.push("/dashboard");
   };
 
   return (
@@ -62,20 +71,30 @@ export default function Hero() {
               Try Demo Now (No Login Required)
               <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
             </button>
-            <button
-              onClick={handleGitHubSignIn}
-              className="px-8 py-4 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:text-primary dark:hover:text-primary font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-200 border-2 border-gray-300 dark:border-gray-600 hover:border-primary flex items-center gap-2"
-            >
-              <Github className="w-5 h-5" />
-              Sign in with GitHub
-            </button>
+            {isSignedIn ? (
+              <button
+                onClick={handleDashboard}
+                className="px-8 py-4 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:text-primary dark:hover:text-primary font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-200 border-2 border-gray-300 dark:border-gray-600 hover:border-primary flex items-center gap-2"
+              >
+                <Code2 className="w-5 h-5" />
+                Go to Dashboard
+              </button>
+            ) : (
+              <button
+                onClick={handleSignIn}
+                className="px-8 py-4 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:text-primary dark:hover:text-primary font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-200 border-2 border-gray-300 dark:border-gray-600 hover:border-primary flex items-center gap-2"
+              >
+                <LogIn className="w-5 h-5" />
+                Sign In
+              </button>
+            )}
           </div>
 
           {/* Public Access Notice */}
           <p className="mt-6 text-sm text-gray-500 dark:text-gray-400">
             🎉 Now publicly accessible! Try analyzing public repositories without signing in.
             <br />
-            Sign in with GitHub for private repositories and advanced features.
+            Sign in for advanced features and private repository access.
           </p>
 
           {/* Trust Indicators */}

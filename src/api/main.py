@@ -44,6 +44,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "https://autorev.servicevision.io",
+        "https://autorev.schoolvision.io",
         "http://localhost:3000",
         "http://localhost:8080"
     ],
@@ -535,6 +536,58 @@ async def run_analysis(job_id: str, github_token: Optional[str] = None):
             "message": f"Analysis failed: {str(e)}"
         })
         print(f"Analysis failed for job {job_id}: {str(e)}")
+
+
+class InvitationRequestCreate(BaseModel):
+    """Request to join AutoRev"""
+    email: str
+    name: Optional[str] = None
+    reason: Optional[str] = None
+    company: Optional[str] = None
+
+
+class InvitationRequestResponse(BaseModel):
+    """Response for invitation request"""
+    id: int
+    email: str
+    name: Optional[str]
+    reason: Optional[str]
+    company: Optional[str]
+    status: str
+    created_at: datetime
+
+
+@app.post("/api/invitation-request", response_model=InvitationRequestResponse)
+async def create_invitation_request(request: InvitationRequestCreate):
+    """Submit a request to join AutoRev"""
+    from src.api.database import create_invitation_request, get_invitation_request_by_email
+
+    # Check if email already requested
+    existing = get_invitation_request_by_email(request.email)
+    if existing:
+        raise HTTPException(
+            status_code=400,
+            detail="An invitation request already exists for this email address"
+        )
+
+    # Create the request
+    invitation_request = create_invitation_request(
+        email=request.email,
+        name=request.name,
+        reason=request.reason,
+        company=request.company
+    )
+
+    return invitation_request
+
+
+@app.get("/api/invitation-requests")
+async def list_invitation_requests():
+    """List all invitation requests (admin only - TODO: add auth)"""
+    from src.api.database import get_all_invitation_requests
+
+    requests = get_all_invitation_requests()
+    return requests
 
 
 if __name__ == "__main__":
