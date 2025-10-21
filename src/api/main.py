@@ -120,9 +120,38 @@ async def debug_env():
         "has_openai_key": bool(os.environ.get("OPENAI_API_KEY")),
         "has_anthropic_key": bool(os.environ.get("ANTHROPIC_API_KEY")),
         "has_openrouter_key": bool(os.environ.get("OPENROUTER_API_KEY")),
+        "has_database_url": bool(os.environ.get("DATABASE_URL")),
         "openai_key_prefix": os.environ.get("OPENAI_API_KEY", "")[:10] + "..." if os.environ.get("OPENAI_API_KEY") else "NOT_SET",
-        "env_keys": [k for k in os.environ.keys() if "API" in k or "KEY" in k]
+        "database_url_prefix": os.environ.get("DATABASE_URL", "")[:20] + "..." if os.environ.get("DATABASE_URL") else "NOT_SET",
+        "env_keys": [k for k in os.environ.keys() if "API" in k or "KEY" in k or "DATABASE" in k]
     }
+
+
+@app.get("/debug/db")
+async def debug_database():
+    """Debug endpoint to test database connection"""
+    try:
+        from src.api.database import get_db, AnalysisJob
+
+        with get_db() as db:
+            # Try to count jobs
+            count = db.query(AnalysisJob).count()
+
+            # Get latest job if any
+            latest = db.query(AnalysisJob).order_by(AnalysisJob.created_at.desc()).first()
+
+            return {
+                "status": "connected",
+                "total_jobs": count,
+                "latest_job_id": latest.id if latest else None,
+                "latest_job_status": latest.status if latest else None
+            }
+    except Exception as e:
+        return {
+            "status": "error",
+            "error": str(e),
+            "error_type": type(e).__name__
+        }
 
 
 @app.post("/api/analysis/start", response_model=AnalysisStatus)
@@ -139,39 +168,48 @@ async def start_analysis(
     3. Queues the analysis in background
     4. Returns job ID for status polling
     """
-    # Generate job ID
-    job_id = str(uuid.uuid4())
+    try:
+        # Generate job ID
+        job_id = str(uuid.uuid4())
 
-    # Create job record in database
-    job_data = {
-        "id": job_id,
-        "status": "queued",
-        "repo_url": request.repo_url,
-        "branch": request.branch,
-        "preset": request.preset,
-        "ai_provider": request.ai_provider,
-        "progress": 0,
-        "message": "Analysis queued"
-    }
+        # Create job record in database
+        job_data = {
+            "id": job_id,
+            "status": "queued",
+            "repo_url": request.repo_url,
+            "branch": request.branch,
+            "preset": request.preset,
+            "ai_provider": request.ai_provider,
+            "progress": 0,
+            "message": "Analysis queued"
+        }
 
-    job = create_job(job_data)
+        job = create_job(job_data)
 
-    # Queue background analysis (pass github_token separately as it's not stored in DB)
-    background_tasks.add_task(run_analysis, job_id, request.github_token)
+        # Queue background analysis (pass github_token separately as it's not stored in DB)
+        background_tasks.add_task(run_analysis, job_id, request.github_token)
 
-    return AnalysisStatus(
-        id=job.id,
-        status=job.status,
-        repo_url=job.repo_url,
-        branch=job.branch,
-        created_at=job.created_at.isoformat(),
-        started_at=job.started_at.isoformat() if job.started_at else None,
-        completed_at=job.completed_at.isoformat() if job.completed_at else None,
-        progress=job.progress,
-        message=job.message,
-        result_url=job.result_url,
-        error=job.error
-    )
+        return AnalysisStatus(
+            id=job.id,
+            status=job.status,
+            repo_url=job.repo_url,
+            branch=job.branch,
+            created_at=job.created_at.isoformat(),
+            started_at=job.started_at.isoformat() if job.started_at else None,
+            completed_at=job.completed_at.isoformat() if job.completed_at else None,
+            progress=job.progress,
+            message=job.message,
+            result_url=job.result_url,
+            error=job.error
+        )
+    except Exception as e:
+        print(f"❌ Failed to start analysis: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to start analysis: {str(e)}"
+        )
 
 
 @app.get("/api/analysis/status/{job_id}", response_model=AnalysisStatus)

@@ -56,27 +56,35 @@ def init_db():
     """
     global engine, SessionLocal
 
-    if not DATABASE_URL:
-        # Fallback to in-memory SQLite for local development
-        print("WARNING: No DATABASE_URL found, using SQLite in-memory database")
-        db_url = "sqlite:///./autorev.db"
-    else:
-        # Railway provides postgres:// but SQLAlchemy 2.0 requires postgresql://
-        db_url = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+    try:
+        if not DATABASE_URL:
+            # Fallback to SQLite for local development
+            print("WARNING: No DATABASE_URL found, using SQLite database")
+            db_url = "sqlite:///./autorev.db"
+        else:
+            # Railway provides postgres:// but SQLAlchemy 2.0 requires postgresql://
+            db_url = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+            print(f"Connecting to PostgreSQL database...")
 
-    engine = create_engine(
-        db_url,
-        pool_pre_ping=True,  # Verify connections before using
-        pool_size=5,
-        max_overflow=10
-    )
+        engine = create_engine(
+            db_url,
+            pool_pre_ping=True,  # Verify connections before using
+            pool_size=5,
+            max_overflow=10
+        )
 
-    # Create tables if they don't exist
-    Base.metadata.create_all(bind=engine)
+        # Create tables if they don't exist
+        print("Creating database tables...")
+        Base.metadata.create_all(bind=engine)
 
-    SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+        SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-    print(f"Database initialized: {db_url}")
+        print(f"✅ Database initialized successfully: {db_url.split('@')[0]}@***")
+    except Exception as e:
+        print(f"❌ Database initialization failed: {str(e)}")
+        print(f"DATABASE_URL present: {bool(DATABASE_URL)}")
+        # Re-raise to prevent app from starting with broken database
+        raise
 
 
 @contextmanager
@@ -110,12 +118,17 @@ def get_job(job_id: str) -> Optional[AnalysisJob]:
 
 def create_job(job_data: dict) -> AnalysisJob:
     """Create new analysis job"""
-    with get_db() as db:
-        job = AnalysisJob(**job_data)
-        db.add(job)
-        db.commit()
-        db.refresh(job)
-        return job
+    try:
+        with get_db() as db:
+            job = AnalysisJob(**job_data)
+            db.add(job)
+            db.commit()
+            db.refresh(job)
+            return job
+    except Exception as e:
+        print(f"❌ Failed to create job: {str(e)}")
+        print(f"Job data: {job_data}")
+        raise
 
 
 def update_job(job_id: str, updates: dict) -> Optional[AnalysisJob]:
