@@ -67,20 +67,22 @@ export default function ResultsPage() {
         const data = await response.json();
         setResult(data);
       } else {
-        // Mock data for demo
+        const errorData = await response.json();
+        console.error("Analysis fetch failed:", errorData);
+        // Show error state - do NOT show mock data for failed analyses
         setResult({
           id: analysisId,
-          repository: "example/repo",
-          branch: "main",
-          status: "completed",
-          startedAt: new Date(Date.now() - 300000).toISOString(),
-          completedAt: new Date().toISOString(),
-          findings: generateMockFindings(),
+          repository: errorData.repository || "unknown",
+          branch: errorData.branch || "unknown",
+          status: errorData.status || "failed",
+          startedAt: errorData.startedAt || new Date().toISOString(),
+          completedAt: errorData.completedAt || new Date().toISOString(),
+          findings: [],
           summary: {
-            totalFindings: 45,
-            bySeverity: { critical: 3, high: 8, medium: 15, low: 12, info: 7 },
-            byPhase: { "0": 10, "1": 8, "2": 12, "3": 10, "4": 5 },
-            estimatedEffort: 24.5,
+            totalFindings: 0,
+            bySeverity: { critical: 0, high: 0, medium: 0, low: 0, info: 0 },
+            byPhase: {},
+            estimatedEffort: 0,
           },
         });
       }
@@ -185,6 +187,66 @@ export default function ResultsPage() {
             Back to Dashboard
           </button>
         </div>
+      </div>
+    );
+  }
+
+  // Show error state for failed analyses
+  if (result.status === "failed") {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+        <header className="bg-white dark:bg-gray-800 shadow">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+            <button
+              onClick={() => router.push("/analyze")}
+              className="flex items-center gap-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
+            >
+              <ArrowLeft className="w-5 h-5" />
+              Start New Analysis
+            </button>
+          </div>
+        </header>
+        <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-8">
+            <div className="flex items-center gap-4 mb-6">
+              <AlertTriangle className="w-12 h-12 text-red-600" />
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Analysis Failed</h1>
+                <p className="text-gray-600 dark:text-gray-400">
+                  Repository: <span className="font-mono">{result.repository}</span>
+                </p>
+              </div>
+            </div>
+            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 mb-6">
+              <p className="text-sm text-red-800 dark:text-red-200 font-semibold mb-2">Error Details:</p>
+              <pre className="text-sm text-red-700 dark:text-red-300 whitespace-pre-wrap font-mono">
+                {(result as any).error || (result as any).message || "Unknown error occurred"}
+              </pre>
+            </div>
+            <div className="space-y-4">
+              <p className="text-gray-700 dark:text-gray-300">Common issues:</p>
+              <ul className="list-disc list-inside text-gray-600 dark:text-gray-400 space-y-2">
+                <li><strong>Branch not found:</strong> Make sure to select the correct branch (main vs master)</li>
+                <li><strong>Repository not accessible:</strong> Ensure the repository is public or you're signed in</li>
+                <li><strong>Network issues:</strong> Try again in a few moments</li>
+              </ul>
+              <div className="flex gap-4 mt-6">
+                <button
+                  onClick={() => router.push("/analyze?repo=" + encodeURIComponent(result.repository))}
+                  className="px-6 py-3 bg-primary text-white rounded-lg hover:bg-primary-dark"
+                >
+                  Try Again
+                </button>
+                <button
+                  onClick={() => router.push("/analyze")}
+                  className="px-6 py-3 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600"
+                >
+                  New Analysis
+                </button>
+              </div>
+            </div>
+          </div>
+        </main>
       </div>
     );
   }

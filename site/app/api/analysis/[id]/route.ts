@@ -31,12 +31,18 @@ export async function GET(
       const statusResponse = await fetch(`${BACKEND_URL}/api/analysis/status/${id}`);
       if (statusResponse.ok) {
         const status = await statusResponse.json();
+
+        // Return status info (including failed analyses with error messages)
         return NextResponse.json({
           id,
+          repository: status.repo_url,
+          branch: status.branch,
           status: status.status,
           progress: status.progress,
           message: status.message,
           error: status.error,
+          startedAt: status.started_at,
+          completedAt: status.completed_at,
         });
       }
 
