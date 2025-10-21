@@ -301,6 +301,28 @@ async def get_analysis_result(job_id: str):
         )
 
 
+def normalize_repo_url(repo_input: str) -> str:
+    """
+    Normalize repository URL to full GitHub URL
+
+    Handles:
+    - Full URLs: https://github.com/user/repo
+    - Short format: user/repo or github.com/user/repo
+    """
+    repo_input = repo_input.strip()
+
+    # Already a full URL
+    if repo_input.startswith("https://") or repo_input.startswith("http://"):
+        return repo_input
+
+    # Remove github.com/ prefix if present
+    if repo_input.startswith("github.com/"):
+        repo_input = repo_input.replace("github.com/", "")
+
+    # Assume it's user/repo format
+    return f"https://github.com/{repo_input}"
+
+
 async def run_analysis(job_id: str, github_token: Optional[str] = None):
     """
     Background task to run code analysis
@@ -328,6 +350,9 @@ async def run_analysis(job_id: str, github_token: Optional[str] = None):
         # Get job details
         job = get_job(job_id)
 
+        # Normalize repository URL (handle both full URLs and short format)
+        repo_url = normalize_repo_url(job.repo_url)
+
         # Clone repository to temp directory
         repo_dir = f"/app/temp/{job_id}"
         os.makedirs(repo_dir, exist_ok=True)
@@ -337,12 +362,11 @@ async def run_analysis(job_id: str, github_token: Optional[str] = None):
         clone_cmd = ["git", "clone", "--depth", "1", "--branch", job.branch]
         if github_token:
             # Insert token into URL for private repos
-            repo_url = job.repo_url
             if "github.com" in repo_url:
                 repo_url = repo_url.replace("https://", f"https://{github_token}@")
             clone_cmd.extend([repo_url, repo_dir])
         else:
-            clone_cmd.extend([job.repo_url, repo_dir])
+            clone_cmd.extend([repo_url, repo_dir])
 
         update_job(job_id, {"message": "Cloning repository..."})
         result = subprocess.run(clone_cmd, capture_output=True, text=True, timeout=300)
